@@ -48,6 +48,11 @@ class ProviderRegistry:
         with self._lock:
             return list(self._providers)
 
+    @property
+    def default_name(self) -> Optional[str]:
+        with self._lock:
+            return self._default
+
     def set_default(self, name: str) -> None:
         with self._lock:
             if name not in self._providers:

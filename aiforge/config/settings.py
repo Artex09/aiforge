@@ -12,6 +12,7 @@ Nested keys are addressed with dotted paths: ``config.get("memory.vector.dimensi
 """
 from __future__ import annotations
 
+import copy
 import json
 import os
 from dataclasses import dataclass, field
@@ -72,12 +73,15 @@ DEFAULTS: Dict[str, Any] = {
 
 
 def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-    out = dict(base)
+    # Deep-copy both sides: the result must never alias ``DEFAULTS`` (or a
+    # caller's overrides dict), otherwise ``Config.set`` on one instance would
+    # mutate the module-level defaults shared by every later instance.
+    out = {key: copy.deepcopy(value) for key, value in base.items()}
     for key, value in override.items():
         if isinstance(value, dict) and isinstance(out.get(key), dict):
             out[key] = _deep_merge(out[key], value)
         else:
-            out[key] = value
+            out[key] = copy.deepcopy(value)
     return out
 
 

@@ -18,6 +18,7 @@ from ..agents.agent import AgentConfig
 from ..core.engine import Engine
 from ..core.errors import (
     AuthError,
+    ProviderError,
     ToolNotFoundError,
     ToolPermissionError,
     ToolValidationError,
@@ -26,7 +27,14 @@ from ..core.errors import (
 from ..workflows.serialization import workflow_from_dict
 
 # Ordinary client mistakes -> 400; permission/auth -> 403; everything else -> 500.
-_CLIENT_ERRORS = (ToolValidationError, ToolNotFoundError, ValidationError, KeyError, ValueError)
+_CLIENT_ERRORS = (
+    ToolValidationError,
+    ToolNotFoundError,
+    ValidationError,
+    ProviderError,
+    KeyError,
+    ValueError,
+)
 _FORBIDDEN_ERRORS = (ToolPermissionError, AuthError)
 
 Route = Tuple[str, "re.Pattern[str]", Callable[..., Any]]
@@ -69,7 +77,39 @@ def build_router(engine: Engine) -> Router:
 
     router.add("GET", "/api/health", lambda **_: {"status": "ok"})
     router.add("GET", "/api/status", lambda **_: engine.status())
-    router.add("GET", "/api/providers", lambda **_: {"providers": engine.providers.names()})
+
+    # Providers / LLM connections. Keys go to the in-memory vault only and are
+    # never echoed back.
+    router.add("GET", "/api/providers", lambda **_: engine.provider_info())
+
+    def connect_provider(body: Dict[str, Any], **_: Any) -> Dict[str, Any]:
+        return engine.connect_provider(
+            body.get("provider", ""),
+            api_key=body.get("api_key"),
+            model=body.get("model"),
+            base_url=body.get("base_url"),
+            make_default=bool(body.get("make_default", True)),
+        )
+
+    def default_provider(body: Dict[str, Any], **_: Any) -> Dict[str, Any]:
+        engine.providers.set_default((body.get("provider") or "").strip().lower())
+        return engine.provider_info()
+
+    router.add("POST", "/api/providers/connect", connect_provider)
+    router.add("POST", "/api/providers/default", default_provider)
+    router.add(
+        "POST",
+        "/api/providers/disconnect",
+        lambda body, **_: engine.disconnect_provider(body.get("provider", "")),
+    )
+
+    # Workspace configuration (read-only; the auth token is never exposed).
+    def get_config(**_: Any) -> Dict[str, Any]:
+        cfg = engine.config.as_dict()
+        cfg.get("api", {}).pop("auth_token", None)
+        return {"config": cfg}
+
+    router.add("GET", "/api/config", get_config)
 
     # Tools
     router.add("GET", "/api/tools", lambda **_: {"tools": engine.tools.schemas()})
@@ -140,6 +180,51 @@ def build_router(engine: Engine) -> Router:
 
     router.add("POST", "/api/studio/chat", studio_chat)
 
+    # Run history (Traces page) — newest first.
+    def list_runs(query=None, **_: Any) -> Dict[str, Any]:
+        limit = int(((query or {}).get("limit", ["50"]) or ["50"])[0])
+        return {"runs": list(reversed(engine.backend.query("runs", limit=limit)))}
+
+    router.add("GET", "/api/runs", list_runs)
+
+    # Saved crews (Automations page). Stored in the engine's storage backend.
+    def list_crews(**_: Any) -> Dict[str, Any]:
+        items = engine.backend.items("crews")
+        crews = [{"name": name, **(rec or {})} for name, rec in items.items()]
+        crews.sort(key=lambda c: c.get("saved_at", 0), reverse=True)
+        return {"crews": crews}
+
+    def save_crew(body: Dict[str, Any], **_: Any) -> Dict[str, Any]:
+        name = (body.get("name") or "").strip()
+        graph = body.get("graph")
+        if not name:
+            raise ValueError("A crew needs a name before it can be saved.")
+        if not isinstance(graph, dict) or not graph.get("nodes"):
+            raise ValueError("The crew graph is empty — add at least one node.")
+        import time as _time
+
+        engine.backend.set(
+            "crews",
+            name,
+            {
+                "graph": graph,
+                "saved_at": _time.time(),
+                "agents": sum(1 for n in graph["nodes"] if n.get("type") == "agent"),
+                "tasks": sum(1 for n in graph["nodes"] if n.get("type") == "task"),
+            },
+        )
+        return list_crews()
+
+    def delete_crew(name: str, **_: Any) -> Dict[str, Any]:
+        from urllib.parse import unquote
+
+        engine.backend.delete("crews", unquote(name))
+        return list_crews()
+
+    router.add("GET", "/api/crews", list_crews)
+    router.add("POST", "/api/crews", save_crew)
+    router.add("DELETE", "/api/crews/{name}", delete_crew)
+
     # Monitoring
     router.add("GET", "/api/metrics", lambda **_: engine.monitor.snapshot())
     router.add(
@@ -175,9 +260,22 @@ def build_router(engine: Engine) -> Router:
 
 
 def _templates() -> Dict[str, Any]:
-    from ..agents.templates import list_templates
+    """Template names plus full agent detail so the Studio can render real cards."""
+    from ..agents.templates import TEMPLATES
 
-    return {"templates": list_templates()}
+    detail = []
+    for name in TEMPLATES:
+        cfg = TEMPLATES[name]()
+        detail.append(
+            {
+                "name": name,
+                "role": cfg.role,
+                "description": cfg.description,
+                "system_prompt": cfg.system_prompt,
+                "tools": list(cfg.tools or []),
+            }
+        )
+    return {"templates": list(TEMPLATES), "agents": detail}
 
 
 def _studio_reply(engine: Engine, message: str, graph: Any) -> Dict[str, Any]:
@@ -272,7 +370,7 @@ def make_handler(engine: Engine, router: Router):
                 self.send_header("Access-Control-Allow-Origin", origin)
                 self.send_header("Vary", "Origin")
                 self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-                self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+                self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 
         def _send_json(self, data: Any, status: int = 200) -> None:
             payload = json.dumps(data, default=str).encode("utf-8")
@@ -313,6 +411,9 @@ def make_handler(engine: Engine, router: Router):
                 self._handle_run_stream()
                 return
             self._handle_api("POST", parsed)
+
+        def do_DELETE(self) -> None:  # noqa: N802
+            self._handle_api("DELETE", urlparse(self.path))
 
         def _handle_run_stream(self) -> None:
             if not self._authorized():

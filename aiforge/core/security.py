@@ -34,6 +34,11 @@ class SecretsManager:
                 return self._vault[key]
         return os.environ.get(self._env_prefix + key, os.environ.get(key, default))
 
+    def unset(self, key: str) -> None:
+        """Remove a secret from the in-memory vault (environment is untouched)."""
+        with self._lock:
+            self._vault.pop(key, None)
+
     def require(self, key: str) -> str:
         value = self.get(key)
         if value is None:

@@ -132,9 +132,19 @@ python -m aiforge.cli init ./my-project        # scaffold a new project
 
 AIForge ships a **Node.js flow-based Studio**: a React + React Flow canvas where
 you drag **Agent**, **Task**, and **Trigger** nodes, wire them into a sequential
-crew, describe what you want in the **Studio Chat** (which scaffolds the crew for
-you), and hit **Run** to execute — with per-task results streamed into the Run
-tab. It lives in [`aiforge/frontend/`](aiforge/frontend/).
+crew, describe what you want in the **Studio Chat** (which plans a specialised
+crew for your brief — software, data, content, or research), and hit **Run** —
+with per-task results streamed live into the Run tab. It lives in
+[`aiforge/frontend/`](aiforge/frontend/).
+
+Beyond the canvas, every page is functional:
+
+- **Automations** — name a crew, hit *Save*, reopen or delete it later.
+- **Agents Repository** — real agent templates you can add to the canvas in one click.
+- **Tools & Integrations** — the sandboxed builtin tool catalog.
+- **Traces** — every run recorded: status, tasks, tokens, cost, model, duration.
+- **LLM Connections** — connect OpenAI/Anthropic from the UI (see below).
+- **Usage** — live metrics plus run/cost totals. **Settings** — live workspace config.
 
 ```bash
 # 1) build the UI once (outputs aiforge/frontend/dist)
@@ -159,6 +169,21 @@ If the UI hasn't been built, `serve` falls back to the zero-dependency
 vanilla-JS dashboard (live execution, tools, memory, timeline, analytics).
 
 ## Using a real provider
+
+The quickest way: open the Studio's **LLM Connections** page, paste your API
+key, pick a model, and press *Connect* — it becomes the default provider
+immediately. The key is held in the engine's in-memory vault only (never
+written to disk, never returned by the API).
+
+From the environment instead (`pip install openai` or `anthropic` first):
+
+```powershell
+$env:OPENAI_API_KEY = "sk-…"                 # or ANTHROPIC_API_KEY
+$env:AIFORGE_PROVIDER__DEFAULT = "openai"    # or "anthropic"
+python -m aiforge.cli studio
+```
+
+Or from code:
 
 ```python
 import os

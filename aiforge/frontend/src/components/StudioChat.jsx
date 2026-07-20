@@ -1,14 +1,20 @@
 import { useRef, useEffect, useState } from "react";
-import { Plus, Check, Clock, Play } from "../icons.jsx";
+import { Check, Broom, Play } from "../icons.jsx";
 import { api } from "../api.js";
 
+const GREETING = {
+  role: "assistant",
+  text: "Describe the crew you want to build and I'll wire up specialised agents and tasks on the canvas.",
+};
+
+const SUGGESTIONS = [
+  "Build a backend in Rust",
+  "Analyse a sales dataset",
+  "Write a launch blog post",
+];
+
 export default function StudioChat({ onGraph, notify }) {
-  const [messages, setMessages] = useState([
-    {
-      role: "assistant",
-      text: "Describe the crew you want to build and I'll wire up sequential agents and tasks on the canvas.",
-    },
-  ]);
+  const [messages, setMessages] = useState([GREETING]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const bodyRef = useRef(null);
@@ -17,8 +23,8 @@ export default function StudioChat({ onGraph, notify }) {
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
   }, [messages, busy]);
 
-  async function send() {
-    const message = text.trim();
+  async function send(preset) {
+    const message = (preset ?? text).trim();
     if (!message || busy) return;
     setMessages((m) => [...m, { role: "user", text: message }]);
     setText("");
@@ -59,8 +65,13 @@ export default function StudioChat({ onGraph, notify }) {
     <section className="chat">
       <div className="chat-head">
         <h2>Studio Chat</h2>
-        <button className="ghost" title="History">
-          <Clock width="15" height="15" />
+        <button
+          className="ghost"
+          title="New chat"
+          onClick={() => setMessages([GREETING])}
+          disabled={busy}
+        >
+          <Broom width="15" height="15" />
         </button>
       </div>
 
@@ -82,6 +93,15 @@ export default function StudioChat({ onGraph, notify }) {
             )}
           </div>
         ))}
+        {messages.length === 1 && !busy && (
+          <div className="suggestions">
+            {SUGGESTIONS.map((s) => (
+              <button className="suggestion" key={s} onClick={() => send(s)}>
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
         {busy && (
           <div className="bubble assistant" style={{ color: "var(--muted)" }}>
             Thinking…

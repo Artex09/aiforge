@@ -1,10 +1,29 @@
-import { Env, Share, Download, Deploy, Play } from "../icons.jsx";
+import { Env, Download, Deploy, Play, Check } from "../icons.jsx";
 
-export default function Topbar({ tab, setTab, onRun, running, onDownload, onVariables, onShare, onExportCode }) {
+export default function Topbar({
+  tab,
+  setTab,
+  crewName,
+  setCrewName,
+  onRun,
+  running,
+  onSave,
+  onDownload,
+  onVariables,
+  onExportCode,
+}) {
   return (
     <header className="topbar">
       <div className="breadcrumb">
-        Studio <span style={{ color: "var(--faint)" }}>/</span> <b>Untitled Project</b>
+        Studio <span style={{ color: "var(--faint)" }}>/</span>
+        <input
+          className="crew-name"
+          value={crewName}
+          onChange={(e) => setCrewName(e.target.value)}
+          placeholder="Untitled crew"
+          spellCheck={false}
+          size={Math.max(crewName.length || 13, 8)}
+        />
       </div>
 
       <div className="tabs">
@@ -21,13 +40,13 @@ export default function Topbar({ tab, setTab, onRun, running, onDownload, onVari
           <Env />
           Variables
         </button>
-        <button className="btn subtle" onClick={onShare}>
-          <Share />
-          Share
-        </button>
         <button className="btn subtle" onClick={onDownload}>
           <Download />
           Download
+        </button>
+        <button className="btn subtle" onClick={onSave} title="Save this crew to Automations">
+          <Check />
+          Save
         </button>
         <button className="btn" onClick={onExportCode}>
           <Deploy />

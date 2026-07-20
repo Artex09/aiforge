@@ -1,14 +1,13 @@
-import { Forge, Chevron, ChevronDown, Flow, Grid, Tool, Layers, Gauge, Bolt, Settings, Book, Agent } from "../icons.jsx";
+import { Forge, Flow, Grid, Tool, Gauge, Bolt, Settings, Book, Agent } from "../icons.jsx";
 
 const NAV = [
   {
     label: "Build",
     items: [
-      { id: "automations", name: "Automations", icon: Bolt },
       { id: "crew-studio", name: "Crew Studio", icon: Flow },
+      { id: "automations", name: "Automations", icon: Bolt },
       { id: "agents", name: "Agents Repository", icon: Agent },
       { id: "tools", name: "Tools & Integrations", icon: Tool },
-      { id: "skills", name: "Skills Repository", icon: Layers },
     ],
   },
   {
@@ -38,7 +37,6 @@ export default function Sidebar({ view, setView, connected, provider }) {
           AIForge
           <small>Your workspace</small>
         </div>
-        <ChevronDown className="chev" width="15" height="15" />
       </div>
 
       {NAV.map((group) => (

@@ -27,6 +27,13 @@ async function post(path, body) {
   return data;
 }
 
+async function del(path) {
+  const res = await fetch(path, { method: "DELETE", headers: headers() });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || `DELETE ${path} -> ${res.status}`);
+  return data;
+}
+
 // Stream a crew run over SSE (fetch + ReadableStream). Calls onEvent for each
 // parsed message: {type:'run.start'|'event'|'run.end'|'run.error', ...}.
 async function streamRun(graph, onEvent) {
@@ -62,12 +69,28 @@ export const api = {
   health: () => get("/api/health"),
   status: () => get("/api/status"),
   providers: () => get("/api/providers"),
+  connectProvider: (body) => post("/api/providers/connect", body),
+  setDefaultProvider: (provider) => post("/api/providers/default", { provider }),
+  disconnectProvider: (provider) => post("/api/providers/disconnect", { provider }),
+  config: () => get("/api/config"),
   templates: () => get("/api/templates"),
   toolCatalog: () => get("/api/tools/catalog"),
   agents: () => get("/api/agents"),
   metrics: () => get("/api/metrics"),
+  runs: (limit = 50) => get(`/api/runs?limit=${limit}`),
+  crews: () => get("/api/crews"),
+  saveCrew: (name, graph) => post("/api/crews", { name, graph }),
+  deleteCrew: (name) => del(`/api/crews/${encodeURIComponent(name)}`),
   studioChat: (message, graph) => post("/api/studio/chat", { message, graph }),
   runCrew: (graph) => post("/api/crew/run", graph),
   streamRun,
   graphCode: (graph) => post("/api/graph/code", graph),
 };
+
+export function getApiToken() {
+  return localStorage.getItem(TOKEN_KEY) || "";
+}
+export function setApiToken(value) {
+  if (value) localStorage.setItem(TOKEN_KEY, value);
+  else localStorage.removeItem(TOKEN_KEY);
+}

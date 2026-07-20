@@ -3,6 +3,45 @@
 All notable changes to AIForge are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.0]
+
+### Added — every Studio page is now real
+- **LLM Connections page:** connect OpenAI or Anthropic from the UI — paste a
+  key, pick a model (or a custom OpenAI-compatible base URL), and it becomes
+  the default provider. Keys live in the engine's in-memory vault only: never
+  written to disk, never echoed back by the API.
+  (`POST /api/providers/connect|default|disconnect`, richer `GET /api/providers`.)
+- **Traces page:** every crew run is recorded (status, tasks, tokens, cost,
+  model, duration) and browsable with per-task detail. (`GET /api/runs`;
+  runs persist via the storage backend.)
+- **Automations page:** save the current canvas as a named crew, reopen or
+  delete it later. (`GET/POST /api/crews`, `DELETE /api/crews/{name}`.)
+- **Settings page:** live workspace configuration (provider, security limits,
+  storage, API) served by `GET /api/config` — auth token always redacted —
+  plus a browser-side API bearer-token field and a canvas reset.
+- **Agents Repository:** template cards now show the real role, description,
+  and tool set (`GET /api/templates` returns full detail) with one-click
+  "Add to Studio".
+- **Studio:** editable crew name in the top bar (used when saving/running),
+  a Save button, and example-prompt chips in a fresh chat.
+- **Hash routing:** every page has a URL (`#/traces`, `#/connections`, …) so
+  views are bookmarkable and the browser back button works.
+- Usage page adds crew-run and total-cost stats.
+
+### Changed
+- Sidebar: removed the placeholder "Skills Repository" entry; the footer now
+  shows the *default* provider rather than the first registered one.
+- Topbar: removed the redundant Share button (Download covers export);
+  Studio Chat's dead History button is now a working "New chat".
+- The generic placeholder page (fake "Module · 1/2/3" tiles) is gone —
+  every sidebar destination renders a functional page.
+
+### Fixed
+- **`Config.set` mutated the module-level `DEFAULTS`** because `_deep_merge`
+  shallow-copied nested dicts — e.g. setting `api.auth_token` on one engine
+  silently enabled auth for every engine created afterwards in the same
+  process. Merges now deep-copy both sides.
+
 ## [0.2.0]
 
 ### Added — "make it real" (beyond the mock)

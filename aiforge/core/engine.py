@@ -7,6 +7,7 @@ API layer build on.
 """
 from __future__ import annotations
 
+import time
 from typing import Any, Dict, List, Optional
 
 from ..agents.agent import Agent, AgentConfig
@@ -189,6 +190,71 @@ class Engine:
     def register_provider(self, provider: LLMProvider, *, default: bool = False) -> LLMProvider:
         return self.providers.register(provider, default=default)
 
+    def provider_info(self) -> Dict[str, Any]:
+        """Names + per-provider detail for the API/Studio. Never includes keys."""
+        default = self.providers.default_name
+        detail = []
+        for name in self.providers.names():
+            prov = self._safe_provider(name)
+            detail.append(
+                {
+                    "name": name,
+                    "model": getattr(getattr(prov, "config", None), "model", None),
+                    "default": name == default,
+                }
+            )
+        return {"providers": self.providers.names(), "default": default, "detail": detail}
+
+    _CONNECTABLE = ("openai", "anthropic")
+
+    def connect_provider(
+        self,
+        name: str,
+        *,
+        api_key: Optional[str] = None,
+        model: Optional[str] = None,
+        base_url: Optional[str] = None,
+        make_default: bool = False,
+    ) -> Dict[str, Any]:
+        """Register a real LLM provider at runtime (Studio "LLM Connections").
+
+        The key is kept in the in-memory secrets vault only — it is never
+        written to disk and never returned by the API.
+        """
+        name = (name or "").strip().lower()
+        if name not in self._CONNECTABLE:
+            raise ValueError(
+                f"Unknown provider '{name}'. Connectable providers: {', '.join(self._CONNECTABLE)}"
+            )
+        if api_key and api_key.strip():
+            self.secrets.set(f"{name.upper()}_API_KEY", api_key.strip())
+        if model and model.strip():
+            self.config.set(f"provider.{name}_model", model.strip())
+        if base_url and base_url.strip() and name == "openai":
+            self.config.set("provider.openai_base_url", base_url.strip())
+        if not self.secrets.get(f"{name.upper()}_API_KEY"):
+            raise ValueError(
+                f"No API key provided and {name.upper()}_API_KEY is not set in the environment."
+            )
+        if name == "openai":
+            self._maybe_register_openai()
+        else:
+            self._maybe_register_anthropic()
+        if make_default:
+            self.providers.set_default(name)
+        return self.provider_info()
+
+    def disconnect_provider(self, name: str) -> Dict[str, Any]:
+        """Unregister a provider and drop its vault key (env vars are untouched)."""
+        name = (name or "").strip().lower()
+        if name == "mock":
+            raise ValueError("The built-in mock provider cannot be disconnected.")
+        if name not in self.providers.names():
+            raise ValueError(f"Provider '{name}' is not connected.")
+        self.providers.unregister(name)
+        self.secrets.unset(f"{name.upper()}_API_KEY")
+        return self.provider_info()
+
     # --------------------------------------------------------------- agents
     def create_agent(
         self,
@@ -287,7 +353,36 @@ class Engine:
 
         crew = Crew(self, tasks, name=graph.get("name", "studio-crew"), process=process)
         result = crew.kickoff(graph.get("inputs"))
-        return result.to_dict()
+        out = result.to_dict()
+        self._record_run(graph.get("name", "studio-crew"), out)
+        return out
+
+    def _record_run(self, name: str, result: Dict[str, Any]) -> None:
+        """Persist a compact run record for the Traces page (best-effort)."""
+        try:
+            self.backend.append(
+                "runs",
+                {
+                    "name": name,
+                    "success": bool(result.get("success")),
+                    "duration": result.get("duration", 0),
+                    "tasks": [
+                        {
+                            "task": t.get("task"),
+                            "agent": t.get("agent"),
+                            "success": t.get("success"),
+                        }
+                        for t in result.get("task_outputs", [])
+                    ],
+                    "tokens": (result.get("usage") or {}).get("total_tokens", 0),
+                    "cost_usd": result.get("cost_usd", 0),
+                    "model": result.get("model"),
+                    "error": result.get("error"),
+                    "timestamp": time.time(),
+                },
+            )
+        except Exception:  # noqa: BLE001 - history must never break a run
+            pass
 
     @staticmethod
     def _order_by_edges(task_nodes, edges):

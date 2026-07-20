@@ -188,3 +188,20 @@ export const Gauge = (p) => (
     <path d="M12 18l4-5" />
   </S>
 );
+export const Trash = (p) => (
+  <S {...p}>
+    <path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2M6 7l1 13a1 1 0 001 1h8a1 1 0 001-1l1-13" />
+    <path d="M10 11v6M14 11v6" />
+  </S>
+);
+export const Key = (p) => (
+  <S {...p}>
+    <circle cx="8" cy="14" r="4" />
+    <path d="M11 11l9-9M17 5l3 3M14 8l2 2" />
+  </S>
+);
+export const Broom = (p) => (
+  <S {...p}>
+    <path d="M14 4l6 6M9 9l6 6-5 5H6a2 2 0 01-2-2v-4z" />
+  </S>
+);

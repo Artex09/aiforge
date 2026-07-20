@@ -9,7 +9,15 @@ import NodeEditor from "./components/NodeEditor.jsx";
 import RunView from "./components/RunView.jsx";
 import ContextMenu from "./components/ContextMenu.jsx";
 import Modal from "./components/Modal.jsx";
-import { AgentsPage, ToolsPage, UsagePage, Placeholder } from "./components/Pages.jsx";
+import {
+  AgentsPage,
+  AutomationsPage,
+  ConnectionsPage,
+  SettingsPage,
+  ToolsPage,
+  TracesPage,
+  UsagePage,
+} from "./components/Pages.jsx";
 import { StudioContext } from "./studio.js";
 import { api } from "./api.js";
 
@@ -63,21 +71,46 @@ function loadStored() {
   } catch {
     /* ignore */
   }
-  return { nodes: START_NODES, edges: START_EDGES };
+  return { nodes: START_NODES, edges: START_EDGES, name: "Untitled crew" };
 }
+
+const VIEWS = [
+  "crew-studio",
+  "automations",
+  "agents",
+  "tools",
+  "traces",
+  "connections",
+  "usage",
+  "settings",
+];
+const viewFromHash = () => {
+  const v = window.location.hash.replace(/^#\/?/, "");
+  return VIEWS.includes(v) ? v : "crew-studio";
+};
 
 export default function App() {
   const stored = loadStored();
-  const [view, setView] = useState("crew-studio");
+  const [view, setViewState] = useState(viewFromHash);
+  const setView = useCallback((v) => {
+    setViewState(v);
+    window.location.hash = "/" + v;
+  }, []);
+  useEffect(() => {
+    const onHash = () => setViewState(viewFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
   const [tab, setTab] = useState("canvas");
   const [nodes, setNodes] = useState(stored.nodes);
   const [edges, setEdges] = useState(stored.edges);
+  const [crewName, setCrewName] = useState(stored.name || "Untitled crew");
   const [process] = useState("sequential");
   const [running, setRunning] = useState(false);
   const [trace, setTrace] = useState([]);
   const [result, setResult] = useState(null);
   const [connected, setConnected] = useState(false);
-  const [provider, setProvider] = useState("mock");
+  const [provInfo, setProvInfo] = useState(null);
   const [toast, setToast] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [catalog, setCatalog] = useState({});
@@ -99,7 +132,7 @@ export default function App() {
         .then((d) => {
           if (!alive) return;
           setConnected(true);
-          setProvider(d.providers?.[0] || "mock");
+          setProvInfo(d);
         })
         .catch(() => alive && setConnected(false));
     ping();
@@ -113,11 +146,11 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORE_KEY, JSON.stringify({ nodes, edges }));
+      localStorage.setItem(STORE_KEY, JSON.stringify({ nodes, edges, name: crewName }));
     } catch {
       /* ignore */
     }
-  }, [nodes, edges]);
+  }, [nodes, edges, crewName]);
 
   const toolNames = useMemo(
     () => Object.values(catalog).flat().map((t) => t.function?.name || t.name).filter(Boolean),
@@ -171,10 +204,11 @@ export default function App() {
     [duplicateNode, deleteNode]
   );
 
-  const applyGraph = useCallback((graph) => {
+  const applyGraph = useCallback((graph, name) => {
     if (!graph) return;
     setNodes((graph.nodes || []).map((n) => ({ ...n })));
     setEdges((graph.edges || []).map((e) => ({ ...e, type: "smoothstep" })));
+    if (name) setCrewName(name);
     setResult(null);
     setTrace([]);
     setSelectedId(null);
@@ -188,12 +222,12 @@ export default function App() {
     });
     return {
       process,
-      name: "studio-crew",
+      name: crewName.trim() || "Untitled crew",
       inputs: Object.keys(inputObj).length ? inputObj : undefined,
       nodes: nodes.map((n) => ({ id: n.id, type: n.type, data: n.data })),
       edges: edges.map((e) => ({ source: e.source, target: e.target })),
     };
-  }, [nodes, edges, process, inputs]);
+  }, [nodes, edges, process, inputs, crewName]);
 
   const runCrew = useCallback(async () => {
     setRunning(true);
@@ -225,12 +259,15 @@ export default function App() {
     notify("Exported crew as JSON");
   }, [buildGraph, notify]);
 
-  const shareGraph = useCallback(() => {
-    navigator.clipboard?.writeText(JSON.stringify(buildGraph(), null, 2)).then(
-      () => notify("Crew JSON copied to clipboard"),
-      () => notify("Clipboard unavailable")
-    );
-  }, [buildGraph, notify]);
+  const saveCrew = useCallback(async () => {
+    const name = crewName.trim() || "Untitled crew";
+    try {
+      await api.saveCrew(name, buildGraph());
+      notify(`Saved “${name}” to Automations`);
+    } catch (e) {
+      notify("Could not save: " + e.message);
+    }
+  }, [buildGraph, crewName, notify]);
 
   const exportCode = useCallback(async () => {
     try {
@@ -249,11 +286,13 @@ export default function App() {
         <Topbar
           tab={tab}
           setTab={setTab}
+          crewName={crewName}
+          setCrewName={setCrewName}
           onRun={runCrew}
           running={running}
+          onSave={saveCrew}
           onDownload={downloadGraph}
           onVariables={() => setModal("variables")}
-          onShare={shareGraph}
           onExportCode={exportCode}
         />
         {tab === "canvas" ? (
@@ -295,25 +334,51 @@ export default function App() {
     </div>
   );
 
+  const loadSavedCrew = useCallback(
+    (graph, name) => {
+      applyGraph(graph, name);
+      setView("crew-studio");
+      notify(`Opened “${name}” in the Studio`);
+    },
+    [applyGraph, notify]
+  );
+
+  const addTemplateAgent = useCallback(
+    (data) => {
+      addNode("agent", data);
+      setView("crew-studio");
+      notify(`${data.name} added to the canvas`);
+    },
+    [addNode, notify]
+  );
+
   const renderView = () => {
     switch (view) {
       case "crew-studio":
         return renderStudio();
+      case "automations":
+        return <AutomationsPage onLoad={loadSavedCrew} notify={notify} />;
       case "agents":
-        return <AgentsPage />;
+        return <AgentsPage onAddAgent={addTemplateAgent} />;
       case "tools":
         return <ToolsPage />;
+      case "traces":
+        return <TracesPage />;
+      case "connections":
+        return <ConnectionsPage info={provInfo} refresh={setProvInfo} notify={notify} />;
       case "usage":
         return <UsagePage />;
+      case "settings":
+        return <SettingsPage notify={notify} />;
       default:
-        return <Placeholder view={view} />;
+        return renderStudio();
     }
   };
 
   return (
     <StudioContext.Provider value={studioActions}>
       <div className="app">
-        <Sidebar view={view} setView={setView} connected={connected} provider={provider} />
+        <Sidebar view={view} setView={setView} connected={connected} provider={provInfo?.default} />
         {renderView()}
 
         <ContextMenu

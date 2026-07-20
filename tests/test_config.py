@@ -31,3 +31,17 @@ def test_file_load_json(tmp_path):
     assert cfg.get("provider.model") == "from-file"
     # unspecified keys still fall back to defaults
     assert cfg.get("provider.default") == "mock"
+
+
+def test_set_never_mutates_module_defaults():
+    """Config.set on one instance must not bleed into later instances via
+    the shared DEFAULTS dict (regression: auth_token leaked across engines)."""
+    from aiforge.config.settings import DEFAULTS
+
+    a = Config()
+    a.set("api.auth_token", "leak?")
+    a.set("provider.openai_model", "gpt-x")
+    assert DEFAULTS["api"]["auth_token"] is None
+    b = Config()
+    assert b.get("api.auth_token") is None
+    assert b.get("provider.openai_model") is None
