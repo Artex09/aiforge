@@ -1,0 +1,26 @@
+{
+  "provider": {
+    "default": "mock",
+    "model": "aiforge-mock-1",
+    "temperature": 0.5,
+    "fallbacks": []
+  },
+  "memory": {
+    "short_term_capacity": 30,
+    "compression": { "enabled": true, "threshold": 40 }
+  },
+  "storage": {
+    "backend": "local",
+    "path": ".aiforge"
+  },
+  "security": {
+    "allow_shell": false,
+    "network_allowlist": [],
+    "max_steps": 12
+  },
+  "api": {
+    "host": "127.0.0.1",
+    "port": 8787,
+    "auth_token": null
+  }
+}

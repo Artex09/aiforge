@@ -1,0 +1,36 @@
+# AIForge runtime data
+.aiforge/
+.aiforge_*/
+*.db
+*.sqlite
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+# Root-level only — aiforge/frontend/dist (the built Studio) must be committed.
+/dist/
+.venv/
+venv/
+
+# Tooling
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Node / frontend
+node_modules/
+aiforge/frontend/node_modules/
+npm-debug.log*
+# NOTE: aiforge/frontend/dist is intentionally NOT ignored — the API server
+# serves it, so shipping the built Studio UI makes `serve` work out of the box.
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

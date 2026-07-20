@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aiforge"
+version = "0.2.0"
+description = "A modular framework for building autonomous multi-agent AI systems."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "AIForge" }]
+keywords = ["ai", "agents", "multi-agent", "llm", "workflow", "framework"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+
+# The core framework runs on the Python standard library alone.
+dependencies = []
+
+[project.optional-dependencies]
+openai = ["openai>=1.0"]
+anthropic = ["anthropic>=0.25"]
+vector = ["numpy>=1.23"]
+yaml = ["PyYAML>=6.0"]
+dev = ["pytest>=7.0", "pytest-cov>=4.0"]
+all = ["openai>=1.0", "anthropic>=0.25", "numpy>=1.23", "PyYAML>=6.0"]
+
+[project.scripts]
+aiforge = "aiforge.cli.main:main"
+
+[project.urls]
+Documentation = "https://example.invalid/aiforge/docs"
+Source = "https://example.invalid/aiforge"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["aiforge*"]
+
+[tool.setuptools.package-data]
+"aiforge.dashboard" = ["static/*"]
+# Ship the typed marker and the built Studio (Node UI) so `pip install` gives
+# typed signatures and serves the UI out of the box.
+"aiforge" = [
+    "py.typed",
+    "frontend/dist/index.html",
+    "frontend/dist/assets/*",
+    "frontend/dist/*.svg",
+    "frontend/dist/*.ico",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

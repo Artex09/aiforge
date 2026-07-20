@@ -1,0 +1,25 @@
+{
+  "name": "research_and_report",
+  "description": "A declarative workflow: search, then summarise, with a retry.",
+  "steps": [
+    {
+      "type": "set_variable",
+      "name": "seed",
+      "values": { "topic": "autonomous multi-agent systems" }
+    },
+    {
+      "type": "tool",
+      "name": "search",
+      "tool": "web_search",
+      "arguments": { "query": "$topic", "max_results": 3 },
+      "output_var": "results"
+    },
+    {
+      "type": "tool",
+      "name": "count",
+      "tool": "word_count",
+      "arguments": { "text": "$topic" },
+      "output_var": "stats"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "aiforge-studio",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "AIForge Studio — a Node-based visual workflow builder for serial agent crews.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 8788"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "reactflow": "^11.11.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^5.4.11"
+  }
+}

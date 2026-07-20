@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AIForge Dashboard</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo">◆</span>
+      <span class="brand-name">AIForge</span>
+    </div>
+    <nav id="nav">
+      <button class="nav-item active" data-view="chat">Live Execution</button>
+      <button class="nav-item" data-view="agents">Agent Explorer</button>
+      <button class="nav-item" data-view="tools">Tool Manager</button>
+      <button class="nav-item" data-view="memory">Memory Viewer</button>
+      <button class="nav-item" data-view="timeline">Execution Timeline</button>
+      <button class="nav-item" data-view="logs">Logs</button>
+      <button class="nav-item" data-view="analytics">Analytics</button>
+      <button class="nav-item" data-view="settings">Settings</button>
+    </nav>
+    <div class="status-dot" id="conn">connecting…</div>
+  </aside>
+
+  <main class="content">
+    <header class="topbar">
+      <h1 id="view-title">Live Execution</h1>
+      <div class="pill" id="provider-pill">provider: —</div>
+    </header>
+
+    <!-- Live Execution / Chat -->
+    <section class="view active" id="view-chat">
+      <div class="chat-window" id="chat-window"></div>
+      <form class="chat-input" id="chat-form">
+        <select id="agent-select"></select>
+        <input id="chat-text" placeholder="Send a task to the agent…" autocomplete="off" />
+        <button type="submit">Run</button>
+      </form>
+    </section>
+
+    <!-- Agent Explorer -->
+    <section class="view" id="view-agents">
+      <div class="toolbar">
+        <select id="template-select"></select>
+        <button id="create-agent">Create from template</button>
+      </div>
+      <div class="cards" id="agents-list"></div>
+    </section>
+
+    <!-- Tool Manager -->
+    <section class="view" id="view-tools">
+      <div class="cards" id="tools-list"></div>
+    </section>
+
+    <!-- Memory Viewer -->
+    <section class="view" id="view-memory">
+      <div class="toolbar">
+        <input id="memory-query" placeholder="Search memory…" />
+        <button id="memory-search">Search</button>
+      </div>
+      <div id="memory-stats" class="stat-row"></div>
+      <div class="cards" id="memory-list"></div>
+    </section>
+
+    <!-- Timeline -->
+    <section class="view" id="view-timeline">
+      <div class="timeline" id="timeline-list"></div>
+    </section>
+
+    <!-- Logs -->
+    <section class="view" id="view-logs">
+      <pre class="logs" id="logs-box"></pre>
+    </section>
+
+    <!-- Analytics -->
+    <section class="view" id="view-analytics">
+      <div class="stat-grid" id="stat-grid"></div>
+      <h3>Tool usage</h3>
+      <div id="tool-usage"></div>
+    </section>
+
+    <!-- Settings -->
+    <section class="view" id="view-settings">
+      <pre class="logs" id="settings-box"></pre>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

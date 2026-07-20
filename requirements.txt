@@ -1,0 +1,12 @@
+# AIForge core requires NOTHING beyond the Python standard library.
+# The lines below are OPTIONAL extras — install only what you need.
+#
+#   pip install -r requirements.txt   # installs all optional extras
+#
+# Or use the pyproject extras instead:  pip install -e ".[all]"
+
+openai>=1.0        # OpenAI-compatible provider adapter
+anthropic>=0.25    # Anthropic (Claude) provider adapter
+numpy>=1.23        # optional acceleration for vector memory / similarity
+PyYAML>=6.0        # optional YAML configuration file support
+pytest>=7.0        # test suite

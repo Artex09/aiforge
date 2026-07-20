@@ -1,0 +1,5 @@
+graft aiforge/frontend/dist
+graft aiforge/dashboard/static
+include LICENSE README.md requirements.txt
+prune aiforge/frontend/node_modules
+global-exclude __pycache__ *.py[cod]
